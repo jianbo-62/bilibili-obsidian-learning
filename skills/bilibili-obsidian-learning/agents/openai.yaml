@@ -1,0 +1,4 @@
+interface:
+  display_name: "B 站学习笔记"
+  short_description: "将 B 站视频整理成 Obsidian 课程笔记"
+  default_prompt: "Use $bilibili-obsidian-learning 将这个 B 站视频整理成 Obsidian 学习笔记。"
