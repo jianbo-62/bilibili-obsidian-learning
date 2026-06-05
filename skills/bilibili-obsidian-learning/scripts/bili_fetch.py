@@ -50,6 +50,29 @@ def extract_bvid(url_or_bvid):
     return match.group(1)
 
 
+def extract_page(url_or_bvid):
+    parsed = urllib.parse.urlparse(url_or_bvid)
+    query = urllib.parse.parse_qs(parsed.query)
+    raw_page = (query.get("p") or [None])[0]
+    if not raw_page:
+        return 1
+    try:
+        page = int(raw_page)
+    except ValueError as exc:
+        raise ValueError(f"Invalid Bilibili page parameter p={raw_page!r}") from exc
+    return max(page, 1)
+
+
+def select_page(data, page_number):
+    pages = data.get("pages") or []
+    if not pages:
+        return {"cid": data["cid"], "page": 1, "part": data.get("title") or ""}
+    for page in pages:
+        if int(page.get("page") or 0) == page_number:
+            return page
+    raise ValueError(f"Cannot find page {page_number}; available pages: {[p.get('page') for p in pages]}")
+
+
 def download_file(url, dest, referer, timeout=60):
     headers = {
         "User-Agent": USER_AGENT,
@@ -80,15 +103,18 @@ def main():
 
     clear_proxy_env()
     bvid = extract_bvid(args.url_or_bvid)
-    referer = f"https://www.bilibili.com/video/{bvid}/"
+    page_number = extract_page(args.url_or_bvid)
+    referer = f"https://www.bilibili.com/video/{bvid}/?p={page_number}"
     view_url = f"https://api.bilibili.com/x/web-interface/view?bvid={urllib.parse.quote(bvid)}"
     view = request_json(view_url, referer=referer)
     if view.get("code") != 0:
         raise RuntimeError(f"view API failed: {view}")
 
     data = view["data"]
+    selected_page = select_page(data, page_number)
     title = data.get("title") or bvid
-    safe_title = sanitize_name(title)
+    part_title = selected_page.get("part") or title
+    safe_title = sanitize_name(f"P{page_number:02d}_{part_title}")
     out_dir = Path(args.out) / f"{bvid}_{safe_title}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -98,7 +124,7 @@ def main():
 
     for key, url in {
         "cover.jpg": data.get("pic"),
-        "first_frame.jpg": (data.get("pages") or [{}])[0].get("first_frame"),
+        "first_frame.jpg": selected_page.get("first_frame"),
     }.items():
         if url:
             if url.startswith("//"):
@@ -110,7 +136,7 @@ def main():
             except Exception as exc:
                 print(f"warn: failed to download {key}: {exc}", file=sys.stderr)
 
-    cid = data["cid"]
+    cid = selected_page["cid"]
     aid = data["aid"]
     play_url = (
         "https://api.bilibili.com/x/player/wbi/playurl?"
@@ -150,8 +176,10 @@ def main():
     summary = {
         "bvid": bvid,
         "title": title,
+        "page": page_number,
+        "part": part_title,
         "owner": (data.get("owner") or {}).get("name"),
-        "duration": data.get("duration"),
+        "duration": selected_page.get("duration") or data.get("duration"),
         "pubdate": data.get("pubdate"),
         "cid": cid,
         "aid": aid,
