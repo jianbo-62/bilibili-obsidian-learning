@@ -66,7 +66,7 @@ description: 哔哩哔哩/B 站视频学习工作流。Use when the user provide
    - frontmatter 至少包含：来源平台、URL、bvid、标题、作者、发布时间、学习领域、处理状态、标签。
    - 图片链接使用 Obsidian 格式：`![[assets/selected/<文件名>.jpg]]`。
    - 适合流程型课程时，加入 Mermaid 流程图。
-   - 原始逐字稿放在 `transcript/`，在附录中链接。
+   - 原始逐字稿放在 `transcript/`，保留 `transcript.txt`、`transcript.srt`、`transcript.json`；不要额外生成 `逐字稿-自动识别.md` 这类重复 Markdown。
    - 不要把大型原始视频、音频复制进 Obsidian vault，除非用户明确要求。
 
 7. 验证输出。
@@ -110,7 +110,6 @@ Obsidian vault 内：
     transcript.txt
     transcript.srt
     transcript.json
-    逐字稿-自动识别.md
 ```
 
 本地工作区内：
